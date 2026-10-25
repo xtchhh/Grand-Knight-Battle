@@ -2,6 +2,10 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 using UnityEngine.AI;
+using System.Runtime.CompilerServices;
+using UnityEngine.Playables;
+using UnityEngine.InputSystem;
+using Unity.VisualScripting;
 
 public class Crusader : CrusaderTeam
 {
@@ -9,8 +13,11 @@ public class Crusader : CrusaderTeam
     private float attackTimer;
 
     [Header("Movement")]
-    private float walkSpeed = 4f;
-    private float retreatSpeed = 2f;
+    private float moveSpeed;
+    private float walkSpeed = 3f;
+    private float runSpeed = 6f;
+    private float idleSpeed = 0f;
+    //private float retreatSpeed = 2f;
     private Vector3 directionToEnemy;
 
     [Header("Agent")]
@@ -18,6 +25,17 @@ public class Crusader : CrusaderTeam
 
     [Header("Animation")]
     private Animator animator;
+
+    [Header("State")]
+    private PlayerState currentState;
+
+    private enum PlayerState
+    {
+        Idle,
+        Walking,
+        Running,
+        Dead
+    }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -34,30 +52,7 @@ public class Crusader : CrusaderTeam
     // Update is called once per frame
     void Update()
     {
-        Move();
-        Attack();
         SelfDestruct();
-        Rotation();
-        //Anims();
-    }
-
-    void Move()
-    {
-        enemyAgent.stoppingDistance = 3f;
-
-        if (health > 0f)
-        {
-            enemyAgent.speed = walkSpeed;
-            enemyAgent.destination = ClosestEnemy().transform.position;//once entire enemy team is deleted from memory, mrc error
-                                                                       //will happen because engine is pointing to objects that dont exist
-        }
-        /*
-        else
-        {
-            enemyAgent.speed = retreatSpeed;
-            enemyAgent.destination = test.transform.position;
-        }
-        */
     }
 
     void Rotation()
@@ -82,15 +77,77 @@ public class Crusader : CrusaderTeam
         }
     }
 
-    /*void Anims()
+    void HandleWalkState()
     {
-        if (enemyAgent.velocity != Vector3.zero)
+        currentState = PlayerState.Walking;
+        //play walking anim
+        //set destination to mouse click position
+        moveSpeed = walkSpeed;
+        //rotation
+    }
+
+    void HandleRunState()
+    {
+        currentState = PlayerState.Running;
+        //play running anim
+        //set destination to mouse click position
+        moveSpeed = runSpeed;
+        //rotation
+    }
+
+    void HandleIdleState()
+    {
+        currentState = PlayerState.Idle;
+        //play idle anim
+        //set destination to current pos/ or stop it?
+        moveSpeed = idleSpeed;
+        //rotation
+    }
+
+    void HandleDeadState()
+    {
+        currentState = PlayerState.Dead;
+        //play dead anim
+        //set destination to current pos/ or stop it?
+        moveSpeed = idleSpeed;
+        //rotation
+    }
+
+    void HandleCurrentState()
+    {
+        switch (currentState)
         {
-            animator.Play("Run");
+            case PlayerState.Idle:
+
+                if (this.transform.position == Vector3.zero)
+                {
+                    HandleIdleState();
+                }
+                break;
+
+            case PlayerState.Walking:
+
+                if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    HandleWalkState();
+                }
+                break;
+
+            case PlayerState.Running:
+                
+                if (Mouse.current.rightButton.wasPressedThisFrame)
+                {
+                    HandleRunState();
+                }
+                break;
+
+            case PlayerState.Dead:
+
+                if (health <= 0f)
+                {
+                    HandleDeadState();
+                }
+                break;
         }
-        else if (enemyAgent.velocity == Vector3.zero)
-        {
-            animator.Play("Idle");
-        }
-    }*/
+    }
 }

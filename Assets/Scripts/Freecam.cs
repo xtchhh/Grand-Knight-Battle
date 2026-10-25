@@ -10,7 +10,6 @@ public class Freecam : MonoBehaviour
 
     [Header("Camera")]
     public Camera cam;
-    private float sens = 203f;
 
     [Header("Movement")]
     private CharacterController characterController;
@@ -22,7 +21,6 @@ public class Freecam : MonoBehaviour
     {
         characterController = GetComponent<CharacterController>();
         input = new InputSystem_Actions();
-        cam = GetComponentInChildren<Camera>();
     }
 
     void OnEnable()
@@ -39,39 +37,7 @@ public class Freecam : MonoBehaviour
     void Update()
     {
         HandleMovement(GetForwardDirection(), GetRightDirection());
-        HandleCamera(GetCameraForward(), GetCameraRight());
     }
-
-    #region Camera
-
-    Vector3 GetCameraRight()
-    {
-        Vector3 cameraRight = cam.transform.right;
-        float deltaRight = mouse.x;
-        Vector3 cameraRightDirection = cameraRight * deltaRight * 20f;
-
-        return cameraRightDirection;
-    }
-
-    Vector3 GetCameraForward()
-    {
-        float deltaForward = mouse.y;
-        Vector3 cameraForward = cam.transform.forward;
-        Vector3 cameraForwardDirection = cameraForward * deltaForward * 20f;
-
-        return cameraForwardDirection;
-    }
-
-    void HandleCamera(Vector3 forward, Vector3 right)
-    {
-        mouse = input.Player.Look.ReadValue<Vector2>();
-
-        Vector3 lookDirection = forward + right;
-
-        cam.transform.localRotation = Quaternion.Euler(lookDirection * Time.deltaTime);
-    }
-
-    #endregion
 
     #region Movement
     Vector3 GetForwardDirection()

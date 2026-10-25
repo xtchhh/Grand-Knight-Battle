@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class CrusaderTeam : EntityController
+public class CrusaderTeam : MonoBehaviour
 {
     [Header("Combat")]
     protected float damage = 20f;
+
+    [Header("Health")]
+    protected float health = 100f;
 
     [Header("Enemy Collection")]
 
@@ -41,5 +44,24 @@ public class CrusaderTeam : EntityController
             }
         }
         return enemy;
+    }
+
+    protected bool IsDead()
+    {
+        if (health <= 0f)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    protected void SelfDestruct()
+    {
+        if (IsDead())
+        {
+            Destroy(this.gameObject);
+        }
     }
 }

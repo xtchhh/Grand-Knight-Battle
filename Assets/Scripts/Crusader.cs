@@ -2,35 +2,36 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 using UnityEngine.AI;
-using System.Runtime.CompilerServices;
-using UnityEngine.Playables;
 using UnityEngine.InputSystem;
 using Unity.VisualScripting;
 
 public class Crusader : CrusaderTeam
 {
-    [Header("Combat")]
-    private float attackTimer;
-
     [Header("Movement")]
     private float moveSpeed;
     private float walkSpeed = 3f;
     private float runSpeed = 6f;
     private float idleSpeed = 0f;
-    //private float retreatSpeed = 2f;
     private Vector3 directionToEnemy;
+    private Vector3 directionToDestination;
 
-    [Header("Agent")]
-    private NavMeshAgent enemyAgent;
+    [Header("AI")]
+    private NavMeshAgent agent;
+    private Vector3 destination;
 
     [Header("Animation")]
     private Animator animator;
 
     [Header("State")]
-    private PlayerState currentState;
+    public PlayerState currentState;
 
-    private enum PlayerState
+    [Header("Test Positions")]
+    public Transform pos1;
+    public Transform pos2;
+
+    public enum PlayerState
     {
+        None,
         Idle,
         Walking,
         Running,
@@ -40,9 +41,9 @@ public class Crusader : CrusaderTeam
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        enemyAgent = gameObject.AddComponent<NavMeshAgent>();
-        enemyAgent.autoBraking = false;
-        enemyAgent.updateRotation = false;
+        agent = gameObject.AddComponent<NavMeshAgent>();
+        agent.autoBraking = false;
+        agent.updateRotation = false;
 
         animator = GetComponent<Animator>();
 
@@ -53,19 +54,27 @@ public class Crusader : CrusaderTeam
     void Update()
     {
         SelfDestruct();
+        HandleStateBehavior();
+        Move();
+        TransitionState();
     }
 
-    void Rotation()
+    void Move()
     {
-        directionToEnemy = (ClosestEnemy().transform.position - this.transform.position).normalized; // why do i have to subtract from target instead of opposite to create direction?
-        this.transform.rotation = Quaternion.LookRotation(directionToEnemy);
+        directionToDestination = (destination - this.transform.position).normalized;
+        
+        agent.destination = destination;
+        agent.speed = moveSpeed;
     }
 
     void Attack()
     {
-        attackTimer += Time.deltaTime;
+        float attackTimer = 0f;
         float randomAttackTime = Random.Range(1, 4);
         float updatedDistanceToEnemy = Vector3.Distance(this.transform.position, ClosestEnemy().transform.position);
+
+        attackTimer += Time.deltaTime;
+        directionToEnemy = (ClosestEnemy().transform.position - this.transform.position).normalized;
 
         if (updatedDistanceToEnemy <= 4f)
         {
@@ -79,29 +88,26 @@ public class Crusader : CrusaderTeam
 
     void HandleWalkState()
     {
-        currentState = PlayerState.Walking;
-        //play walking anim
-        //set destination to mouse click position
+        destination = pos1.position;
+        animator.Play("Walk");
         moveSpeed = walkSpeed;
-        //rotation
+        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
     }
 
     void HandleRunState()
     {
-        currentState = PlayerState.Running;
-        //play running anim
-        //set destination to mouse click position
+        destination = pos2.position;
+        animator.Play("Run");
         moveSpeed = runSpeed;
-        //rotation
+        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
     }
 
     void HandleIdleState()
     {
-        currentState = PlayerState.Idle;
-        //play idle anim
-        //set destination to current pos/ or stop it?
+        destination = this.transform.position;
         moveSpeed = idleSpeed;
-        //rotation
+        animator.Play("Idle");
+        this.transform.rotation = Quaternion.identity;
     }
 
     void HandleDeadState()
@@ -110,43 +116,39 @@ public class Crusader : CrusaderTeam
         //play dead anim
         //set destination to current pos/ or stop it?
         moveSpeed = idleSpeed;
-        //rotation
+        //this.transform.rotation = Quaternion.identity;
     }
 
-    void HandleCurrentState()
+    void TransitionState()
+    {
+        if (agent.velocity == Vector3.zero)
+            currentState = PlayerState.Idle;
+
+        if (Mouse.current.leftButton.isPressed)
+            currentState = PlayerState.Walking;
+
+        if (Mouse.current.rightButton.isPressed)
+            currentState = PlayerState.Running;
+    }
+
+    void HandleStateBehavior()
     {
         switch (currentState)
         {
-            case PlayerState.Idle:
-
-                if (this.transform.position == Vector3.zero)
-                {
-                    HandleIdleState();
-                }
-                break;
-
             case PlayerState.Walking:
-
-                if (Mouse.current.leftButton.wasPressedThisFrame)
-                {
-                    HandleWalkState();
-                }
+                HandleWalkState();
                 break;
 
             case PlayerState.Running:
-                
-                if (Mouse.current.rightButton.wasPressedThisFrame)
-                {
-                    HandleRunState();
-                }
+                HandleRunState();
                 break;
 
             case PlayerState.Dead:
+                HandleDeadState();
+                break;
 
-                if (health <= 0f)
-                {
-                    HandleDeadState();
-                }
+            case PlayerState.Idle:
+                HandleIdleState();
                 break;
         }
     }

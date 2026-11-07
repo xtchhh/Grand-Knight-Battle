@@ -1,5 +1,9 @@
+using Unity.Cinemachine;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class Freecam : MonoBehaviour
 {
@@ -10,10 +14,11 @@ public class Freecam : MonoBehaviour
 
     [Header("Camera")]
     public Camera cam;
+    public CinemachineInputAxisController guh;
 
     [Header("Movement")]
     private CharacterController characterController;
-    private float moveSpeed = 10f;
+    private float moveSpeed = 20f;
     private float fastSpeed = 15f;
 
     //caching input
@@ -37,6 +42,7 @@ public class Freecam : MonoBehaviour
     void Update()
     {
         HandleMovement(GetForwardDirection(), GetRightDirection());
+        DisableInput();
     }
 
     #region Movement
@@ -66,4 +72,20 @@ public class Freecam : MonoBehaviour
     }
 
     #endregion
+
+    
+
+    void DisableInput()
+    {
+        if (MouseBehavior.currentMouseState == MouseBehavior.MouseState.PressingRightClick)
+        {
+            guh.enabled = true;
+            moveSpeed = 20;
+        }
+        else if (MouseBehavior.currentMouseState == MouseBehavior.MouseState.NotPressingRightClick)
+        {
+            guh.enabled = false;
+            moveSpeed = 0f;
+        }
+    }
 }

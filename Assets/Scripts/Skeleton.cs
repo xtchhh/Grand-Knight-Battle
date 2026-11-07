@@ -1,128 +1,143 @@
-using System.Runtime.Serialization;
+using System.Linq;
 using UnityEngine;
-using UnityEngine.AI;
 using Random = UnityEngine.Random;
-
+using UnityEngine.AI;
+using UnityEngine.InputSystem;
+using Unity.VisualScripting;
+using System.Runtime.CompilerServices;
 
 public class Skeleton : SkeletonTeam
 {
-    [Header("Combat")]
-    private float attackTimer;
-
     [Header("Movement")]
-    private float distanceToEnemy;
-    private Vector3 directionToEnemy;   
+    private float moveSpeed;
+    private float walkSpeed = 3f;
+    private float runSpeed = 6f;
+    private float idleSpeed = 0f;
+    private Vector3 directionToEnemy;
+    private Vector3 directionToDestination;
 
-    [Header("Agent")]
-    private NavMeshAgent enemyAgent;
+    [Header("AI")]
+    private NavMeshAgent agent;
+    private Vector3 destination;
 
     [Header("Animation")]
     private Animator animator;
 
+    [Header("State")]
+    public PlayerState currentState;
+    private float runBuffer;
+    private float runBufferTime = 0.5f;
+
+    public enum PlayerState
+    {
+        None,
+        Idle,
+        Walking,
+        Running,
+        Dead
+    }
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        enemyAgent = gameObject.AddComponent<NavMeshAgent>();
-        enemyAgent.autoBraking = false;
-        enemyAgent.updateRotation = false;
+        agent = gameObject.AddComponent<NavMeshAgent>();
+        agent.autoBraking = false;
+        agent.updateRotation = false;
 
         animator = GetComponent<Animator>();
 
-        //CacheEnemy();
+        CacheEnemy();
     }
 
     // Update is called once per frame
-
-    /*private TeamController ClosestEnemy()
-    {
-        float closest = Mathf.Infinity;
-
-        for (int i = 0; i < enemies.Count; i++)
-        {
-            if (enemies[i] == null)
-            {
-                continue;
-            }
-
-            distanceToEnemy = Vector3.Distance(this.transform.position, enemies[i].transform.position);
-
-            if (distanceToEnemy < closest)
-            {
-                closest = distanceToEnemy;
-                enemy = enemies[i];
-            }
-        }
-        return enemy;
-    }
-
     void Update()
     {
-        Move();
-        Rotation();
-        Attack();
         SelfDestruct();
-        Anims();
+        HandleStateBehavior();
+        Move();
+        //TransitionState();
     }
 
     void Move()
     {
-        enemyAgent.stoppingDistance = 3f;
+        directionToDestination = (destination - this.transform.position).normalized;
 
-        if (health > 0f)
-        {
-            enemyAgent.speed = walkSpeed;
-            enemyAgent.destination = ClosestEnemy().transform.position; //once entire enemy team is deleted from memory, mrc error
-                                                                        //will happen because engine is pointing to objects that dont exist
-        }
- 
-    }
-
-    void Rotation()
-    {
-        directionToEnemy = (ClosestEnemy().transform.position - this.transform.position).normalized; // why do i have to subtract from target instead of opposite to create direction?
-        this.transform.rotation = Quaternion.LookRotation(directionToEnemy);
+        agent.destination = destination;
+        agent.speed = moveSpeed;
     }
 
     void Attack()
     {
-        attackTimer += Time.deltaTime;
+        float attackTimer = 0f;
         float randomAttackTime = Random.Range(1, 4);
-        float updatedDistanceToEnemy = Vector3.Distance(this.transform.position, ClosestEnemy().transform.position);
 
-        if (updatedDistanceToEnemy <= 4f)
+        attackTimer += Time.deltaTime;
+
+        if (distanceToEnemy <= 5f)
         {
             if (attackTimer > randomAttackTime)
             {
                 animator.SetTrigger("isAttacking");
-
-                //enemy.health -= damage;
                 attackTimer = 0f;
             }
         }
     }
 
-    void Anims()
+    void HandleWalkState()
     {
-        if (enemyAgent.velocity != Vector3.zero && !IsDead())
-        {
-            animator.Play("Skeleton_Rig|Run");
-        }
-        else if (enemyAgent.velocity == Vector3.zero && !IsDead())
-        {
-            animator.Play("Skeleton_Rig|Idle");
-        }
+        destination = ClosestEnemy().transform.position;
+        //animator.Play("Skeleton_Rig|Run");
+        moveSpeed = walkSpeed;
+        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
+        Attack();
 
-        /*if (IsDead())
-        {
-            animator.Play("Death");
-        }
     }
 
-    void SelfDestruct()
+    void HandleRunState()
     {
-        if (IsDead())
+        //destination = pos2.position;
+        animator.Play("Run");
+        moveSpeed = runSpeed;
+        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
+    }
+
+    void HandleIdleState()
+    {
+        destination = this.transform.position;
+        moveSpeed = idleSpeed;
+        animator.Play("Idle");
+        this.transform.rotation = Quaternion.identity;
+    }
+
+    void HandleDeadState()
+    {
+        currentState = PlayerState.Dead;
+        //play dead anim
+        //set destination to current pos/ or stop it?
+        moveSpeed = idleSpeed;
+        //this.transform.rotation = Quaternion.identity;
+    }
+
+    void TransitionState()
+    {
+        if (agent.velocity == Vector3.zero)
+            currentState = PlayerState.Idle;
+
+        if (Mouse.current.leftButton.isPressed)
+            currentState = PlayerState.Walking;
+
+        if (health <= 0f)
+            currentState = PlayerState.Dead;
+
+    }
+
+    void HandleStateBehavior()
+    {
+        switch (currentState)
         {
-            Destroy(this.gameObject);
+            default:
+                HandleWalkState();
+                break;
         }
-    }*/
+    }
 }

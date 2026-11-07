@@ -4,8 +4,9 @@ using Random = UnityEngine.Random;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
 using Unity.VisualScripting;
+using System.Runtime.CompilerServices;
 
-public class Crusader : CrusaderTeam
+public class Crusader : CrusaderFaction
 {
     [Header("Movement")]
     private float moveSpeed;
@@ -24,10 +25,8 @@ public class Crusader : CrusaderTeam
 
     [Header("State")]
     public PlayerState currentState;
-
-    [Header("Test Positions")]
-    public Transform pos1;
-    public Transform pos2;
+    private float runBuffer;
+    private float runBufferTime = 0.5f;
 
     public enum PlayerState
     {
@@ -71,12 +70,12 @@ public class Crusader : CrusaderTeam
     {
         float attackTimer = 0f;
         float randomAttackTime = Random.Range(1, 4);
-        float updatedDistanceToEnemy = Vector3.Distance(this.transform.position, ClosestEnemy().transform.position);
+        //float updatedDistanceToEnemy = Vector3.Distance(this.transform.position, ClosestEnemy().transform.position);
 
         attackTimer += Time.deltaTime;
         directionToEnemy = (ClosestEnemy().transform.position - this.transform.position).normalized;
 
-        if (updatedDistanceToEnemy <= 4f)
+        if (distanceToEnemy <= 4f)
         {
             if (attackTimer > randomAttackTime)
             {
@@ -88,7 +87,7 @@ public class Crusader : CrusaderTeam
 
     void HandleWalkState()
     {
-        destination = pos1.position;
+        destination = MouseBehavior.mouseWorldPos;
         animator.Play("Walk");
         moveSpeed = walkSpeed;
         this.transform.rotation = Quaternion.LookRotation(directionToDestination);
@@ -96,7 +95,7 @@ public class Crusader : CrusaderTeam
 
     void HandleRunState()
     {
-        destination = pos2.position;
+        //destination = pos2.position;
         animator.Play("Run");
         moveSpeed = runSpeed;
         this.transform.rotation = Quaternion.LookRotation(directionToDestination);
@@ -124,11 +123,11 @@ public class Crusader : CrusaderTeam
         if (agent.velocity == Vector3.zero)
             currentState = PlayerState.Idle;
 
-        if (Mouse.current.leftButton.isPressed)
+        if (MouseBehavior.isInputValid)
             currentState = PlayerState.Walking;
 
-        if (Mouse.current.rightButton.isPressed)
-            currentState = PlayerState.Running;
+        if (health <= 0f)
+            currentState = PlayerState.Dead;
     }
 
     void HandleStateBehavior()

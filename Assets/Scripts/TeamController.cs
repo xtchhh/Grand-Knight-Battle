@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class CrusaderTeam : MonoBehaviour
+public class CrusaderFaction : Entity
 {
     [Header("Combat")]
     protected float damage = 20f;
@@ -12,11 +12,9 @@ public class CrusaderTeam : MonoBehaviour
     protected float health = 100f;
 
     [Header("Enemy Collection")]
-
-    public EntityController[] enemiesArray;
-    protected List <EntityController> enemies;
-    protected EntityController enemy = null;
-    private float distanceToEnemy;
+    protected SkeletonTeam[] enemiesArray;
+    protected List <SkeletonTeam> enemies;
+    protected float distanceToEnemy;
 
     protected void CacheEnemy()
     {
@@ -24,8 +22,9 @@ public class CrusaderTeam : MonoBehaviour
         enemies = enemiesArray.ToList();
     }
 
-    protected EntityController ClosestEnemy()
+    protected SkeletonTeam ClosestEnemy()
     {
+        SkeletonTeam enemy = null;
         float closest = Mathf.Infinity;
 
         for (int i = 0; i < enemies.Count; i++)
@@ -46,6 +45,14 @@ public class CrusaderTeam : MonoBehaviour
         return enemy;
     }
 
+    protected void SelfDestruct()
+    {
+        if (IsDead())
+        {
+            Destroy(this.gameObject);
+        }
+    }
+
     protected bool IsDead()
     {
         if (health <= 0f)
@@ -55,13 +62,6 @@ public class CrusaderTeam : MonoBehaviour
         else
         {
             return false;
-        }
-    }
-    protected void SelfDestruct()
-    {
-        if (IsDead())
-        {
-            Destroy(this.gameObject);
         }
     }
 }

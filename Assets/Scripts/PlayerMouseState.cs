@@ -19,7 +19,6 @@ public class PlayerMouseState : MonoBehaviour
     void Awake()
     {
         mouse = Mouse.current;
-        Cursor.lockState = CursorLockMode.Confined;
     }
 
     void Update()
@@ -42,11 +41,13 @@ public class PlayerMouseState : MonoBehaviour
     void HandlePressingState()
     {
         Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
     }
 
     void HandleNotPressingState()
     {
         Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.Confined;
     }
 
     void HandleMouseStateBehavior()

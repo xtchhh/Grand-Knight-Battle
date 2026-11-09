@@ -11,7 +11,6 @@ public class CrusaderFaction : Entity
     [Header("Enemy Collection")]
     protected SkeletonTeam[] enemiesArray;
     protected List <SkeletonTeam> enemies;
-    protected float distanceToEnemy;
 
     protected void CacheEnemy()
     {
@@ -21,6 +20,7 @@ public class CrusaderFaction : Entity
 
     protected SkeletonTeam ClosestEnemy()
     {
+        float distanceToEnemy = 0;
         SkeletonTeam enemy = null;
         float closest = Mathf.Infinity;
 
@@ -40,25 +40,5 @@ public class CrusaderFaction : Entity
             }
         }
         return enemy;
-    }
-
-    protected void SelfDestruct()
-    {
-        if (IsDead())
-        {
-            Destroy(this.gameObject);
-        }
-    }
-
-    protected bool IsDead()
-    {
-        if (health <= 0f)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
     }
 }

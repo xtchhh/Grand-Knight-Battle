@@ -8,8 +8,9 @@ public class PlayerMouseBehavior : MonoBehaviour
     private Camera cam;
 
     [Header("Mouse Properties")]
-    public static Vector3 mouseWorldPos;
-    public static bool isInputValid;
+    public Vector3 mouseWorldPos;
+    public bool isHitValid;
+    public GameObject hitObject;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Awake()
@@ -42,12 +43,13 @@ public class PlayerMouseBehavior : MonoBehaviour
             if (hit.transform.CompareTag("Clickable"))
             {
                 mouseWorldPos = hit.point;
-                isInputValid = true;
+                isHitValid = true;
+                var hitRadius = Instantiate(hitObject, mouseWorldPos, Quaternion.identity);
             }
         }
         else
         {
-            isInputValid = false;
+            isHitValid = false;
         }
     }
 }

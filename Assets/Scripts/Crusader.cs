@@ -2,6 +2,7 @@ using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 using UnityEngine.AI;
+using System.Collections;
 using UnityEngine.InputSystem;
 using Unity.VisualScripting;
 using System.Runtime.CompilerServices;
@@ -15,10 +16,13 @@ public class Crusader : CrusaderFaction
     private float idleSpeed = 0f;
     private Vector3 directionToEnemy;
     private Vector3 directionToDestination;
+    private Vector3 direction;
 
     [Header("AI")]
     private NavMeshAgent agent;
     private Vector3 destination;
+    private bool canProceed;
+    private float distanceToEnemy;
 
     [Header("Animation")]
     private Animator animator;
@@ -28,12 +32,19 @@ public class Crusader : CrusaderFaction
     private float runBuffer;
     private float runBufferTime = 0.5f;
 
+    [Header("Mouse Stuff")]
+    private PlayerMouseBehavior mouseBehavior;
+
+    [Header("Combat")]
+    private bool canGenerateRandomAttack = true;
+
     public enum PlayerState
     {
         None,
         Idle,
         Walking,
         Running,
+        Attacking,
         Dead
     }
 
@@ -43,8 +54,11 @@ public class Crusader : CrusaderFaction
         agent = gameObject.AddComponent<NavMeshAgent>();
         agent.autoBraking = false;
         agent.updateRotation = false;
+        agent.stoppingDistance = 4f;
 
         animator = GetComponent<Animator>();
+
+        mouseBehavior = gameObject.AddComponent<PlayerMouseBehavior>();
 
         CacheEnemy();
     }
@@ -52,82 +66,107 @@ public class Crusader : CrusaderFaction
     // Update is called once per frame
     void Update()
     {
-        SelfDestruct();
         HandleStateBehavior();
-        Move();
-        TransitionState();
+        TransitionState();  
     }
 
-    void Move()
+    Vector3 DirectionToDestination(Vector3 target)
     {
-        directionToDestination = (destination - this.transform.position).normalized;
-        
-        agent.destination = destination;
-        agent.speed = moveSpeed;
-    }
-
-    void Attack()
-    {
-        float attackTimer = 0f;
-        float randomAttackTime = Random.Range(1, 4);
-        //float updatedDistanceToEnemy = Vector3.Distance(this.transform.position, ClosestEnemy().transform.position);
-
-        attackTimer += Time.deltaTime;
-        directionToEnemy = (ClosestEnemy().transform.position - this.transform.position).normalized;
-
-        if (distanceToEnemy <= 4f)
-        {
-            if (attackTimer > randomAttackTime)
-            {
-                animator.SetTrigger("isAttacking");
-                attackTimer = 0f;
-            }
-        }
+        return (target - this.transform.position).normalized;
     }
 
     void HandleWalkState()
     {
-        destination = PlayerMouseBehavior.mouseWorldPos;
+        direction = DirectionToDestination(mouseBehavior.mouseWorldPos);
+        agent.destination = mouseBehavior.mouseWorldPos;
         animator.Play("Walk");
-        moveSpeed = walkSpeed;
-        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
+        agent.speed = walkSpeed;
+        this.transform.rotation = Quaternion.LookRotation(direction);
     }
 
     void HandleRunState()
     {
-        //destination = pos2.position;
+        direction = DirectionToDestination(mouseBehavior.mouseWorldPos);
+        agent.destination = mouseBehavior.mouseWorldPos;
         animator.Play("Run");
-        moveSpeed = runSpeed;
-        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
+        agent.speed = runSpeed;
+        this.transform.rotation = Quaternion.LookRotation(direction);
     }
 
     void HandleIdleState()
     {
+        direction = DirectionToDestination(this.transform.position); 
         destination = this.transform.position;
-        moveSpeed = idleSpeed;
+        agent.speed = idleSpeed;
         animator.Play("Idle");
         this.transform.rotation = Quaternion.identity;
     }
 
+    void HandleAttackState()
+    {
+        float attackTimer = 0f;
+        float randomAttackTime = 0f;
+        if (canGenerateRandomAttack)
+        {
+            randomAttackTime = Random.Range(1, 4);
+            canGenerateRandomAttack = false;
+        }
+
+        direction = DirectionToDestination(ClosestEnemy().transform.position);
+        agent.destination = this.transform.position;
+        agent.speed = idleSpeed;
+
+        attackTimer += Time.deltaTime;
+        //Debug.Log(randomAttackTime);
+
+        if (attackTimer > randomAttackTime)
+        {
+            animator.SetTrigger("isAttacking");
+            attackTimer = 0f;
+            canGenerateRandomAttack = true;
+        }
+        this.transform.rotation = Quaternion.LookRotation(direction);
+    }
+
     void HandleDeadState()
     {
-        currentState = PlayerState.Dead;
-        //play dead anim
-        //set destination to current pos/ or stop it?
-        moveSpeed = idleSpeed;
-        //this.transform.rotation = Quaternion.identity;
+        direction = DirectionToDestination(this.transform.position);
+        animator.Play("Death");
+        agent.destination = this.transform.position;
+        agent.speed = idleSpeed;
+        this.transform.rotation = Quaternion.identity;
+
+        StartCoroutine(StartDeadStateJob());
+    }
+
+    IEnumerator StartDeadStateJob()
+    {
+        yield return new WaitForSeconds(2f);
+
+        Destroy(this.gameObject);
     }
 
     void TransitionState()
     {
-        if (this.transform.position == Vector3.zero)
+        if (agent.velocity == Vector3.zero)
+        {
             currentState = PlayerState.Idle;
+        }
 
-        if (PlayerMouseBehavior.isInputValid)
-            currentState = PlayerState.Walking;
+        if (mouseBehavior.isHitValid)
+        {
+            currentState = PlayerState.Running;
+        }
 
         if (health <= 0f)
             currentState = PlayerState.Dead;
+
+        distanceToEnemy = Vector3.Distance(ClosestEnemy().transform.position, this.transform.position);
+
+        if (distanceToEnemy <= 4f)
+        {
+            currentState = PlayerState.Attacking;
+        }
     }
 
     void HandleStateBehavior()
@@ -146,7 +185,11 @@ public class Crusader : CrusaderFaction
                 HandleDeadState();
                 break;
 
-            case PlayerState.Idle:
+            case PlayerState.Attacking:
+                HandleAttackState();
+                break;
+
+            default:
                 HandleIdleState();
                 break;
         }

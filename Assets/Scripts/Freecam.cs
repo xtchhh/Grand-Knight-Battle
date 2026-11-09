@@ -17,7 +17,7 @@ public class Freecam : MonoBehaviour
 
     [Header("Movement")]
     private CharacterController characterController;
-    private float moveSpeed = 20f;
+    private float moveSpeed = 35f;
     private float fastSpeed = 15f;
 
     //caching input
@@ -77,7 +77,7 @@ public class Freecam : MonoBehaviour
         if (PlayerMouseState.currentMouseState == PlayerMouseState.MouseState.PressingRightClick)
         {
             camAxis.enabled = true;
-            moveSpeed = 20;
+            moveSpeed = 35;
         }
         else if (PlayerMouseState.currentMouseState == PlayerMouseState.MouseState.NotPressingRightClick)
         {

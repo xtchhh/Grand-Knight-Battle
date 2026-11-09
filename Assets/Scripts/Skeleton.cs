@@ -119,7 +119,7 @@ public class Skeleton : SkeletonTeam
         agent.speed = idleSpeed;
 
         attackTimer += Time.deltaTime;
-        Debug.Log(randomAttackTime);
+        //Debug.Log(randomAttackTime);
 
         if (attackTimer > randomAttackTime)
         {

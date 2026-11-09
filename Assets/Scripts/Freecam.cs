@@ -10,11 +10,10 @@ public class Freecam : MonoBehaviour
     [Header("Input")]
     public InputSystem_Actions input;
     private Vector2 move;
-    private Vector2 mouse;
 
     [Header("Camera")]
     public Camera cam;
-    public CinemachineInputAxisController guh;
+    public CinemachineInputAxisController camAxis;
 
     [Header("Movement")]
     private CharacterController characterController;
@@ -73,18 +72,16 @@ public class Freecam : MonoBehaviour
 
     #endregion
 
-    
-
     void DisableInput()
     {
-        if (MouseBehavior.currentMouseState == MouseBehavior.MouseState.PressingRightClick)
+        if (PlayerMouseState.currentMouseState == PlayerMouseState.MouseState.PressingRightClick)
         {
-            guh.enabled = true;
+            camAxis.enabled = true;
             moveSpeed = 20;
         }
-        else if (MouseBehavior.currentMouseState == MouseBehavior.MouseState.NotPressingRightClick)
+        else if (PlayerMouseState.currentMouseState == PlayerMouseState.MouseState.NotPressingRightClick)
         {
-            guh.enabled = false;
+            camAxis.enabled = false;
             moveSpeed = 0f;
         }
     }

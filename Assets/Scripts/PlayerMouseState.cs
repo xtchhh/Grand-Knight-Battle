@@ -2,16 +2,13 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
-public class MouseBehavior : MonoBehaviour
+public class PlayerMouseState : MonoBehaviour
 {
     [Header("Input")]
     private Mouse mouse;
-    private Camera cam;
 
     [Header("Mouse Properties")]
     public static MouseState currentMouseState;
-    public static Vector3 mouseWorldPos;
-    public static bool isInputValid;
 
     public enum MouseState
     {
@@ -23,14 +20,12 @@ public class MouseBehavior : MonoBehaviour
     {
         mouse = Mouse.current;
         Cursor.lockState = CursorLockMode.Confined;
-        cam = FindAnyObjectByType<Camera>();
     }
 
     void Update()
     {
         HandleCursorStateTransition();
         HandleMouseStateBehavior();
-        GetMousePosition();
     }
 
     #region Mouse State
@@ -65,35 +60,6 @@ public class MouseBehavior : MonoBehaviour
             case MouseState.NotPressingRightClick:
                 HandleNotPressingState();
                 break;
-        }
-    }
-    #endregion
-
-    #region Mouse Raycast
-    void GetMousePosition()
-    {
-        if (mouse.leftButton.wasPressedThisFrame)
-        {
-            CheckInput();
-        }
-    }
-
-    void CheckInput()
-    {
-        var mousePosition = mouse.position.ReadValue();
-        Ray testRay = cam.ScreenPointToRay(mousePosition);
-
-        if (Physics.Raycast(testRay, out RaycastHit hit))
-        {
-            if (hit.transform.CompareTag("Clickable"))
-            {
-                mouseWorldPos = hit.point;
-                isInputValid = true;
-            }
-        }
-        else
-        {
-            isInputValid = false;
         }
     }
     #endregion

@@ -87,7 +87,7 @@ public class Crusader : CrusaderFaction
 
     void HandleWalkState()
     {
-        destination = MouseBehavior.mouseWorldPos;
+        destination = PlayerMouseBehavior.mouseWorldPos;
         animator.Play("Walk");
         moveSpeed = walkSpeed;
         this.transform.rotation = Quaternion.LookRotation(directionToDestination);
@@ -120,10 +120,10 @@ public class Crusader : CrusaderFaction
 
     void TransitionState()
     {
-        if (agent.velocity == Vector3.zero)
+        if (this.transform.position == Vector3.zero)
             currentState = PlayerState.Idle;
 
-        if (MouseBehavior.isInputValid)
+        if (PlayerMouseBehavior.isInputValid)
             currentState = PlayerState.Walking;
 
         if (health <= 0f)

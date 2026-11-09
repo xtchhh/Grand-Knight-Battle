@@ -5,11 +5,8 @@ using UnityEngine;
 
 public class CrusaderFaction : Entity
 {
-    [Header("Combat")]
-    protected float damage = 20f;
-
     [Header("Health")]
-    protected float health = 100f;
+    public float health = 100f;
 
     [Header("Enemy Collection")]
     protected SkeletonTeam[] enemiesArray;

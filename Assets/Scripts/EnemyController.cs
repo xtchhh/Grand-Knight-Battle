@@ -5,17 +5,13 @@ using UnityEngine;
 
 public class SkeletonTeam : Entity
 {
-    [Header("Combat")]
-    protected float damage = 20f;
-
     [Header("Health")]
-    protected float health = 100f;
+    public float health = 100f;
 
     [Header("Enemy Collection")]
 
     protected CrusaderFaction[] enemiesArray;
     protected List <CrusaderFaction> enemies;
-    protected float distanceToEnemy;
 
     protected void CacheEnemy()
     {
@@ -25,6 +21,7 @@ public class SkeletonTeam : Entity
 
     protected CrusaderFaction ClosestEnemy()
     {
+        float distanceToEnemy = 0f;
         CrusaderFaction enemy = null;
         float closest = Mathf.Infinity;
 
@@ -44,25 +41,5 @@ public class SkeletonTeam : Entity
             }
         }
         return enemy;
-    }
-
-    protected void SelfDestruct()
-    {
-        if (IsDead())
-        {
-            Destroy(this.gameObject);
-        }
-    }
-
-    protected bool IsDead()
-    {
-        if (health <= 0f)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
     }
 }

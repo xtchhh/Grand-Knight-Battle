@@ -1,10 +1,10 @@
-using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 using UnityEngine.AI;
 using UnityEngine.InputSystem;
-using Unity.VisualScripting;
+using System.Collections;
 using System.Runtime.CompilerServices;
+using Unity.VisualScripting;
 
 public class Skeleton : SkeletonTeam
 {
@@ -13,31 +13,42 @@ public class Skeleton : SkeletonTeam
     private float walkSpeed = 3f;
     private float runSpeed = 6f;
     private float idleSpeed = 0f;
-    private Vector3 directionToEnemy;
-    private Vector3 directionToDestination;
+    private Vector3 direction;
 
     [Header("AI")]
     private NavMeshAgent agent;
-    private Vector3 destination;
+    private bool canGenerateNumber;
 
     [Header("Animation")]
     private Animator animator;
+    private float distanceToEnemy;
 
     [Header("State")]
-    public PlayerState currentState;
-    private float runBuffer;
-    private float runBufferTime = 0.5f;
+    public AIState currentState;
+    private Navigation navPosition;
+    AIState[] stateCollection = {AIState.Walking, AIState.Running, AIState.Idle};
+    private bool canTransition = true;
 
-    public enum PlayerState
+    [Header("Transitions")]
+    public float transitionTimer;
+    public float transitionTime;
+    public int randomStateIndex;
+
+    [Header("Combat")]
+    private bool canGenerateRandomAttack = true;
+
+    public enum AIState
     {
         None,
         Idle,
         Walking,
         Running,
+        Attacking,
         Dead
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
+    //adding navagent is expensive maybe?
     void Start()
     {
         agent = gameObject.AddComponent<NavMeshAgent>();
@@ -45,6 +56,10 @@ public class Skeleton : SkeletonTeam
         agent.updateRotation = false;
 
         animator = GetComponent<Animator>();
+        navPosition = gameObject.AddComponent<Navigation>();
+
+        transitionTimer = 13f;
+        canTransition = true;
 
         CacheEnemy();
     }
@@ -52,92 +67,159 @@ public class Skeleton : SkeletonTeam
     // Update is called once per frame
     void Update()
     {
-        SelfDestruct();
         HandleStateBehavior();
-        Move();
-        //TransitionState();
+        TransitionState();
     }
 
-    void Move()
+    Vector3 DirectionToDestination(Vector3 target)
     {
-        directionToDestination = (destination - this.transform.position).normalized;
-
-        agent.destination = destination;
-        agent.speed = moveSpeed;
+        return (target - this.transform.position).normalized;
     }
 
-    void Attack()
-    {
-        float attackTimer = 0f;
-        float randomAttackTime = Random.Range(1, 4);
-
-        attackTimer += Time.deltaTime;
-
-        if (distanceToEnemy <= 5f)
-        {
-            if (attackTimer > randomAttackTime)
-            {
-                animator.SetTrigger("isAttacking");
-                attackTimer = 0f;
-            }
-        }
-    }
+    #region State Behaviours
 
     void HandleWalkState()
     {
-        destination = ClosestEnemy().transform.position;
-        //animator.Play("Skeleton_Rig|Run");
-        moveSpeed = walkSpeed;
-        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
-        Attack();
-
+        direction = DirectionToDestination(agent.destination);
+        animator.Play("Skeleton_Rig|Walk");
+        agent.speed = walkSpeed;
+        this.transform.rotation = Quaternion.LookRotation(direction);
     }
 
     void HandleRunState()
     {
-        //destination = pos2.position;
-        animator.Play("Run");
-        moveSpeed = runSpeed;
-        this.transform.rotation = Quaternion.LookRotation(directionToDestination);
+        direction = DirectionToDestination(agent.destination);
+        animator.Play("Skeleton_Rig|Run");
+        agent.speed = runSpeed;
+        this.transform.rotation = Quaternion.LookRotation(direction);
     }
 
+    //or stop the agent instead of setting destination to its transform position
     void HandleIdleState()
     {
-        destination = this.transform.position;
-        moveSpeed = idleSpeed;
-        animator.Play("Idle");
-        this.transform.rotation = Quaternion.identity;
+        direction = DirectionToDestination(this.transform.position);
+        agent.destination = this.transform.position;
+        agent.speed = idleSpeed;
+        animator.Play("Skeleton_Rig|Idle");
+        this.transform.rotation = Quaternion.LookRotation(direction);
+    }
+
+    void HandleAttackState()
+    {
+        float attackTimer = 0f;
+        float randomAttackTime = 0f;
+        if (canGenerateRandomAttack)
+        {
+            randomAttackTime = Random.Range(1, 4);
+            canGenerateRandomAttack = false;
+        }
+
+        direction = DirectionToDestination(ClosestEnemy().transform.position);
+        agent.destination = this.transform.position;
+        agent.speed = idleSpeed;
+
+        attackTimer += Time.deltaTime;
+        Debug.Log(randomAttackTime);
+
+        if (attackTimer > randomAttackTime)
+        {
+            animator.SetTrigger("isAttacking");
+            attackTimer = 0f;
+            canGenerateRandomAttack = true;
+        }
+        this.transform.rotation = Quaternion.LookRotation(direction);
     }
 
     void HandleDeadState()
     {
-        currentState = PlayerState.Dead;
-        //play dead anim
-        //set destination to current pos/ or stop it?
+        animator.Play("Skeleton_Rig|Death");
+        agent.destination = this.transform.position;
+        agent.speed = idleSpeed;
         moveSpeed = idleSpeed;
-        //this.transform.rotation = Quaternion.identity;
+        this.transform.rotation = Quaternion.identity;
+
+        StartCoroutine(StartDeadStateJob());
     }
 
+    IEnumerator StartDeadStateJob()
+    {
+        yield return new WaitForSeconds(2f);
+
+        Destroy(this.gameObject);
+    }
+
+    #endregion
+
+    #region State Transitions
+    void HandleMainStateTransition()
+    {
+        if (canGenerateNumber)
+        {
+            transitionTime = Random.Range(5, 20);
+            canGenerateNumber = false;
+        }
+
+        transitionTimer += Time.deltaTime;
+
+        if (transitionTimer > transitionTime)
+        {
+            randomStateIndex = Random.Range(0, stateCollection.Length);
+            agent.destination = navPosition.GetDestination();
+            currentState = stateCollection[randomStateIndex];
+            transitionTimer = 0f;
+            canGenerateNumber = true;
+        }
+    }
+
+    void HandleAttackStateTransition()
+    {
+        distanceToEnemy = Vector3.Distance(ClosestEnemy().transform.position, this.transform.position);
+
+        if (distanceToEnemy <= 5f)
+            currentState = AIState.Attacking;
+    }
+
+    void HandleDeadStateTransition()
+    {
+        if (health <= 0f)
+        {
+            currentState = AIState.Dead;
+        }
+    }
+    #endregion
+
+    #region State Handlers
     void TransitionState()
     {
-        if (agent.velocity == Vector3.zero)
-            currentState = PlayerState.Idle;
-
-        if (Mouse.current.leftButton.isPressed)
-            currentState = PlayerState.Walking;
-
-        if (health <= 0f)
-            currentState = PlayerState.Dead;
-
+        HandleAttackStateTransition();
+        HandleDeadStateTransition();
+        HandleMainStateTransition();
     }
 
     void HandleStateBehavior()
     {
         switch (currentState)
         {
-            default:
+            case AIState.Idle:
+                HandleIdleState();
+                break;
+
+            case AIState.Walking:
                 HandleWalkState();
+                break;
+
+            case AIState.Running:
+                HandleRunState();
+                break;
+
+            case AIState.Attacking:
+                HandleAttackState();
+                break;
+
+            case AIState.Dead:
+                HandleDeadState();
                 break;
         }
     }
+    #endregion
 }
